@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <atomic>
 
 // --- 1. CONFIGURATION ---
