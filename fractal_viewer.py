@@ -2,6 +2,7 @@ import serial
 import pygame
 import colorsys
 import sys
+import time
 
 # --- 1. CONFIGURATION ---
 # These MUST match your ESP32 settings
@@ -9,9 +10,10 @@ WIDTH = 320
 HEIGHT = 240
 MAX_ITER = 100
 BAUD_RATE = 500000
+TOTAL_PIXELS = WIDTH * HEIGHT
 
-# CHANGE THIS to your ESP32's port (e.g., 'COM3' on Windows, '/dev/ttyUSB0' on Linux/Mac)
-COM_PORT = 'COM3' 
+# CHANGE THIS to your ESP32's port ( '/dev/ttyUSB0' on Linux/Mac)
+COM_PORT = 'COM3' #For Windows
 
 # --- 2. COLOR MAPPING ---
 def get_color(iterations):
@@ -44,6 +46,9 @@ except Exception as e:
 running = True
 pixels_drawn = 0
 
+#to time performance of different appraches
+start_time = None       # To store when the first pixel arrives
+finished_timing = False # To ensure we only print the time once
 print("Waiting for data stream...")
 
 while running:
@@ -58,9 +63,12 @@ while running:
             # Read, decode, and strip hidden characters (like \r\n)
             raw_data = ser.readline().decode('utf-8').strip()
             
-            # Parse the CSV format: X,Y,ITER
+            # Parse the CSV format: X,Y,ITER , this data is being sent by the loop function of the ESP32
             parts = raw_data.split(',')
             if len(parts) == 3:
+                if start_time is None:
+                    start_time = time.perf_counter()
+                    print("First pixel received! Timer started...")
                 x = int(parts[0])
                 y = int(parts[1])
                 iterations = int(parts[2])
@@ -75,7 +83,16 @@ while running:
                 # We update the actual display every 500 pixels to maintain performance.
                 if pixels_drawn % 500 == 0:
                     pygame.display.flip()
-
+                if pixels_drawn == TOTAL_PIXELS and not finished_timing:
+                    # pygame.display.flip() # Force a final screen update
+                    end_time = time.perf_counter()
+                    elapsed_time = end_time - start_time
+                    
+                    print(f"Fractal complete!")
+                    print(f" Total time: {elapsed_time:.3f} seconds")
+                    print(f" Speed: {TOTAL_PIXELS / elapsed_time:.0f} pixels per second")
+                    
+                    finished_timing = True # Prevent it from printing over and over
         except ValueError:
             # Ignore garbled serial data (common right when the ESP32 boots up)
             pass

@@ -22,16 +22,16 @@ typedef struct {
 
 // The Queue to safely pass data from the cores to the Serial printer
 QueueHandle_t resultQueue;
-
 // Atomic variable for dynamic load balancing
 // Both cores will safely read and increment this without colliding
 std::atomic<int> currentRow(0); 
 
 // --- 3. THE MATH TASK (Runs on BOTH Cores) ---
 void calculateMandelbrotTask(void *parameter) {
-  for(;;) {
+  while(1) {
     // 3a. Grab the next available row to calculate
     int y = currentRow.fetch_add(1);
+
     
     // If all rows are done, wait a bit and restart (looping the animation)
     if (y >= IMAGE_HEIGHT) {
@@ -76,12 +76,13 @@ void setup() {
   // Use a fast baud rate since we are sending a LOT of pixel data
   Serial.begin(500000); 
   
+
   // Create a queue large enough to hold 500 pixels at a time
   resultQueue = xQueueCreate(500, sizeof(PixelData));
 
   // Pin the exact same task to Core 0 and Core 1
-  xTaskCreatePinnedToCore(calculateMandelbrotTask, "FractalCore0", 10000, NULL, 1, NULL, 0);
-  xTaskCreatePinnedToCore(calculateMandelbrotTask, "FractalCore1", 10000, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(calculateMandelbrotTask, "FractalCore0", 10000, NULL, 1, NULL, 0); //going to core 0
+  xTaskCreatePinnedToCore(calculateMandelbrotTask, "FractalCore1", 10000, NULL, 1, NULL, 1); //Going to core 1 
 }
 
 // --- 5. DATA STREAMING (Runs on Core 1 by default) ---
